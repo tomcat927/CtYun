@@ -8,6 +8,7 @@
 		<PublishAot>true</PublishAot>
 		<FileVersion>1.1.5</FileVersion>
 		<AssemblyVersion>1.1.5</AssemblyVersion>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 	</PropertyGroup>
 
 </Project>
