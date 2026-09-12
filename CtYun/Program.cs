@@ -200,7 +200,20 @@ async Task ReceiveLoop(CtYunApi api, ClientWebSocket ws, AccountConfig account, 
 
     while (ws.State == WebSocketState.Open && !ct.IsCancellationRequested)
     {
-        var result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), ct);
+        WebSocketReceiveResult result;
+        try
+        {
+            result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), ct);
+        }
+        catch (WebSocketException ex)
+        {
+            Utility.WriteLine(ConsoleColor.Red, $"[{label}][{desktop.DesktopCode}] WebSocket 连接中断，准备重连: {ex.Message}");
+            break;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         if (result.MessageType == WebSocketMessageType.Close) break;
 
         if (result.Count == 0)
@@ -213,9 +226,21 @@ async Task ReceiveLoop(CtYunApi api, ClientWebSocket ws, AccountConfig account, 
         if (hex.StartsWith("52454451", StringComparison.OrdinalIgnoreCase))
         {
             Utility.WriteLine(ConsoleColor.Green, $"[{label}][{desktop.DesktopCode}] -> 收到保活校验");
-            var response = encryptor.Execute(data);
-            await ws.SendAsync(response, WebSocketMessageType.Binary, true, ct);
-            Utility.WriteLine(ConsoleColor.DarkGreen, $"[{label}][{desktop.DesktopCode}] -> 发送保活响应成功");
+            try
+            {
+                var response = encryptor.Execute(data);
+                await ws.SendAsync(response, WebSocketMessageType.Binary, true, ct);
+                Utility.WriteLine(ConsoleColor.DarkGreen, $"[{label}][{desktop.DesktopCode}] -> 发送保活响应成功");
+            }
+            catch (WebSocketException ex)
+            {
+                Utility.WriteLine(ConsoleColor.Red, $"[{label}][{desktop.DesktopCode}] 发送保活响应失败，准备重连: {ex.Message}");
+                break;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
             continue;
         }
 
